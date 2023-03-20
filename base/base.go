@@ -6,7 +6,8 @@ import (
 	"time"
 )
 
-// default time format string
+// This is a code snippet that defines several constants.
+// These constants define date formats, time formats, date-time formats, and the default time zone.
 const (
 	DefaultDateFormatStr     = "2006-1-2"
 	DefaultTimeFormatStr     = "15:4:5"
@@ -16,7 +17,8 @@ const (
 
 // time formats
 const (
-	DateFormat uint = iota + 1
+	EmptyTimeFormat uint = iota + 1
+	DateFormat
 	TimeFormat
 	DatetimeFormat
 )
@@ -84,6 +86,10 @@ func init() {
 var defaultTimeLocation *time.Location
 
 func TimeType(input string) (output uint, err error) {
+	if input == "" {
+		output = EmptyTimeFormat
+		return
+	}
 	if _, err = time.Parse(DefaultDateFormatStr, input); err == nil {
 		output = DateFormat
 		return
@@ -191,30 +197,36 @@ func (receive Opts) CheckOpts() (err error) {
 
 	// check begin time type
 	var beginTp uint
-	if receive.BeginTime != "" {
-		beginTp, err = TimeType(receive.BeginTime)
-		if err != nil {
-			err = ErrUnSupportedBeginTimeFormat
-			return
-		}
-		if beginTp != TimeFormat && beginTp != DatetimeFormat {
-			err = ErrUnSupportedBeginTimeFormat
-			return
-		}
+	beginTp, err = TimeType(receive.BeginTime)
+	if err != nil {
+		err = ErrUnSupportedBeginTimeFormat
+		return
+	}
+	if beginTp != TimeFormat &&
+		beginTp != DatetimeFormat &&
+		beginTp != EmptyTimeFormat {
+		err = ErrUnSupportedBeginTimeFormat
+		return
 	}
 
 	// check end time type
 	var endTp uint
-	if receive.EndTime != "" {
-		endTp, err = TimeType(receive.EndTime)
-		if err != nil {
-			err = ErrUnSupportedEndTimeFormat
-			return
-		}
-		if endTp != TimeFormat && endTp != DatetimeFormat {
-			err = ErrUnSupportedEndTimeFormat
-			return
-		}
+	endTp, err = TimeType(receive.EndTime)
+	if err != nil {
+		err = ErrUnSupportedEndTimeFormat
+		return
+	}
+	if endTp != TimeFormat &&
+		endTp != DatetimeFormat &&
+		endTp != EmptyTimeFormat {
+		err = ErrUnSupportedEndTimeFormat
+		return
+	}
+
+	// accept EmptyTimeFormat on either side
+	if (beginTp == EmptyTimeFormat && endTp == DatetimeFormat) ||
+		(beginTp == DatetimeFormat && endTp == EmptyTimeFormat) {
+		return
 	}
 
 	// receive.BeginTime's type must be the same as receive.EndTime's
@@ -265,16 +277,3 @@ func (receive Opts) CheckOpts() (err error) {
 
 	return
 }
-
-/*func _mustBeTimeFormatOrDatetimeFormat(input string) (err error) {
-	var tp uint
-	tp, err = TimeType(input)
-	if err == ErrUnSupportedTimeFormat {
-		return
-	}
-	if tp != TimeFormat && tp != DatetimeFormat {
-		err = ErrUnsupBasetime
-		return
-	}
-	return
-}*/
