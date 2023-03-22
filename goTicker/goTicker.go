@@ -9,6 +9,7 @@ const (
 	StatusNewed uint = iota + 1
 	StatusReSet
 	StatusMockTime
+	StatusDead
 )
 
 var mockDateStr string
@@ -226,6 +227,7 @@ func (receive *GoTicker) UpdateNowDateOrMock(input string) (err error) {
 	now := time.Now().In(receive.BaseLocation)
 	receive.NowDate = now.Format(tickerBase.DefaultDateFormatStr)
 
+	// Return err value
 	return
 }
 
@@ -243,37 +245,124 @@ func (receive *GoTicker) ReloadLocation() (err error) {
 		return
 	}
 
+	// Return err value
 	return
 }
 
-func (receive *GoTicker) Calculate(count int) (output []int64, err error) {
-	output = make([]int64, 0, count)
-	repeat := make([]int64, 0, count)
-
-	duration := int64(receive.Opts.Duration.Seconds())
-	now := time.Now().Unix()
-	if duration >= 1 {
-		distance := time.Now().Unix() - receive.BaseStamp - ((now - receive.BaseStamp) % duration)
-		next := receive.BaseStamp + distance
-		var loopCount int
-	LOOP:
-		for {
-			if next > receive.BeginStamp &&
-				next < receive.EndStamp &&
-				next > now {
-				repeat = append(repeat, next)
-				if next > receive.EndStamp ||
-					len(repeat) > count ||
-					loopCount > 86400 {
-					break LOOP
-				}
-			}
-			next = next + duration
+// mergeSortedBaseListAndRepeat merges a sorted list with a repeated sequence of numbers, producing a new sorted list of a given length.
+func mergeSortedBaseListAndRepeat(list []int64, nearest, duration int64, count int) (output []int64) {
+	// Create an empty slice to hold the repeated elements
+	repeatArr := make([]int64, 0, count)
+	// If nearest is not 0 and duration is at least 1,
+	// repeat the nearest element for count times with duration as the interval
+	if nearest != 0 && duration >= 1 {
+		for i := 0; i < count; i++ {
+			repeatArr = append(repeatArr, nearest)
+			nearest = nearest + duration
 		}
 	}
 
-	// for test
-	output = repeat
+	// Create an empty slice to hold the merged sorted output
+	output = make([]int64, 0, count)
 
+	// Merge the two sorted slices by comparing elements from both slices and adding the smaller one to the output
+	i, j := 0, 0
+	for i < len(list) && j < len(repeatArr) {
+		// If the element from the base list is smaller than or equal to the repeated element, add the base element to the output
+		if list[i] <= repeatArr[j] {
+			output = append(output, list[i])
+			i++
+			// Otherwise, add the repeated element to the output
+		} else {
+			output = append(output, repeatArr[j])
+			j++
+		}
+
+		// If we have added enough elements to the output, return the output
+		if len(output) >= count {
+			return
+		}
+	}
+
+	// If there are any remaining elements in either slice, add them to the output
+	output = append(output, list[i:]...)
+	output = append(output, repeatArr[j:]...)
+
+	// Return the output
+	return
+}
+
+// calculateRepeatParameter calculates the nearest time based on a given duration and
+// returns an error if the duration is less than or equal to 0.
+func (receive *GoTicker) calculateRepeatParameter() (nearest, duration int64, err error) {
+	// Convert duration to seconds
+	duration = int64(receive.Opts.Duration.Seconds())
+
+	// Get current Unix time
+	now := time.Now().Unix()
+
+	// CalculateWaitList the nearest time based on duration
+	if duration >= 1 {
+		// CalculateWaitList the time distance between current time and base stamp
+		distance := time.Now().Unix() - receive.BaseStamp - ((now - receive.BaseStamp) % duration)
+		nearest = receive.BaseStamp + distance
+		// Round the nearest time to a multiple of the duration
+	}
+
+	// Return an error if the duration is less than or equal to 0
+	if duration <= 0 {
+		err = tickerBase.ErrInactiveRepeatList
+	}
+
+	// Return the output and err values
+	return
+}
+
+// usableSubBaseList searches for a suitable base timestamp within a specified time range and
+// returns a list of available sub-base timestamps.
+func (receive *GoTicker) usableSubBaseList() (output []int64, err error) {
+	// Get current Unix time
+	now := time.Now().Unix()
+
+LOOP:
+	// Loop through the BaseList to find a suitable time
+	for i := 0; i < len(receive.BaseList); i++ {
+		// Check if the current BaseStamp is within the specified time range and in the future
+		if receive.BaseList[i] > receive.BeginStamp &&
+			receive.BaseList[i] < receive.EndStamp &&
+			receive.BaseList[i] > now {
+			// If the current BaseStamp meets the criteria,
+			// set the output to the remaining BaseStamps in the list
+			output = receive.BaseList[i:]
+			break LOOP
+		}
+	}
+
+	// Return the output and err values
+	return
+
+}
+
+// CalculateWaitList calculates a wait list by merging sorted base lists and a repeat list based on given parameters.
+func (receive *GoTicker) CalculateWaitList(count int) (waitList []int64, err error) {
+	// Calculate the nearest and duration of the repeat parameter
+	var nearest, duration int64
+	var previousErr error
+	nearest, duration, previousErr = receive.calculateRepeatParameter()
+
+	// Get the usable subBaseList within the specified time range
+	var subBaseList []int64
+	subBaseList, err = receive.usableSubBaseList()
+	if err == nil && previousErr != nil {
+		err = previousErr
+	}
+
+	// Merge the sorted baseList and repeat parameter into a waitList of specified count
+	waitList = mergeSortedBaseListAndRepeat(subBaseList, nearest, duration, count)
+	if len(waitList) == 0 {
+		err = tickerBase.ErrInactiveBaseListAndRepeatList
+	}
+
+	// Return the waitList and err values
 	return
 }
