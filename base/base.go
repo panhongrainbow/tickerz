@@ -39,6 +39,7 @@ const (
 	ErrUnSupportedTimeFormat      = Error("unsupported time format")
 	ErrNoOptLocation              = Error("no opt location")
 	ErrTimeParsion                = Error("time parsing error")
+	ErrNotNewedTicker             = Error("not newed ticker")
 )
 
 const (
@@ -53,21 +54,25 @@ func (e Error) Error() string {
 }
 
 type Base struct {
-	NowDate      string
-	BaseLocation *time.Location
-	BaseStamp    int64
-	BaseList     []int64
-	BeginStamp   int64
-	EndStamp     int64
-	Mode         uint
-	Opts         Opts
-	OffOpts      OffOpts
+	NowDate        string
+	BaseLocation   *time.Location
+	BaseStamp      int64
+	BaseStampType  uint // time type
+	BaseList       []int64
+	BaseListType   uint // time type
+	BeginStamp     int64
+	BeginStampType uint // time type
+	EndStamp       int64
+	EndStampType   uint // time type
+	Mode           uint
+	Opts           Opts
+	OffOpts        OffOpts
+	Status         uint
 }
 
 type Opts struct {
 	BaseTime  string // dateTime or time
 	Location  string
-	Repeat    bool
 	Duration  time.Duration
 	BaseList  []string
 	BeginTime string
@@ -119,13 +124,13 @@ func TimeType(input string) (output uint, err error) {
 
 // TimeValue is a function named TimeValue which takes in two arguments - a string input representing a datetime value,
 // and a pointer to a time.Location value named location.
-// (1) The function returns an int64 value representing the Unix time of the input datetime value and an error.
-// (2) The function first checks if the location argument is nil, and if so, sets it to a default time location.
+// * The function returns an int64 value representing the Unix time of the input datetime value and an error.
+// * The function first checks if the location argument is nil, and if so, sets it to a default time location.
 // It then attempts to parse the input string as a datetime value using the time.ParseInLocation function, with the given location.
 // If there is an error, the function returns an error message indicating that the input is not a datetime value.
-// (3) If the parsing is successful, the function converts the parsed time.
+// * If the parsing is successful, the function converts the parsed time.
 // Time value to a Unix timestamp using the Unix() method and assigns it to the output variable.
-// The function then returns the output value and a nil error.
+// * The function then returns the output value and a nil error.
 func TimeValue(input string, location *time.Location) (output int64, err error) {
 	if location == nil {
 		location = defaultTimeLocation
@@ -140,18 +145,18 @@ func TimeValue(input string, location *time.Location) (output int64, err error) 
 }
 
 // CheckOpts defines a method CheckOpts() on a struct Opts.
-// (1) The purpose of this method is to validate various properties of the Opts struct,
+// * The purpose of this method is to validate various properties of the Opts struct,
 // including the format and order of various time-related fields.
-// (2) The method first checks the BaseTime field to ensure that it is in a supported format.
+// * The method first checks the BaseTime field to ensure that it is in a supported format.
 // It then checks the Location field to ensure that it contains a valid time zone.
 // The Duration field is also checked to ensure that it is a positive value.
-// (3) The method then checks the BaseList field, which is a list of time strings.
+// * The method then checks the BaseList field, which is a list of time strings.
 // Each string is checked to ensure that it is in a supported format and that all strings in the list have the same format.
 // The order of the strings in the list is also checked to ensure that they are in chronological order.
-// (4) Next, the method checks the BeginTime and EndTime fields to ensure that
+// * Next, the method checks the BeginTime and EndTime fields to ensure that
 // they are in a supported format and that they are the same type.
 // If both fields are present, the method checks that BeginTime comes before EndTime.
-// Finally, the method returns an error if any of the checks fail, or nil if all checks pass.
+// * Finally, the method returns an error if any of the checks fail, or nil if all checks pass.
 func (receive *Opts) CheckOpts() (err error) {
 	// check base time
 	var tp uint

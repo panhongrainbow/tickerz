@@ -263,7 +263,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "03:04:05", // valid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -275,7 +274,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05", // valid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -287,7 +285,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05          03:04:05", // valid but not recommend
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -300,7 +297,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "", // invalid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -312,7 +308,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "03:04:05 ", // invalid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -324,7 +319,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  " 03:04:05", // invalid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -336,7 +330,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05", // invalid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -348,7 +341,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05 ", // invalid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -360,7 +352,6 @@ func Test_Check_CheckOpts_BaseTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  " 2023-03-05 03:04:05", // invalid
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -389,7 +380,6 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "", // invalid
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -402,7 +392,6 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "heaven", // invalid
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -414,7 +403,6 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  -1 * time.Nanosecond, // negative duration, invalid
 				BaseList:  []string{},
 				BeginTime: "",
@@ -426,7 +414,6 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01",
 				Location:  "",
-				Repeat:    false,
 				Duration:  1 * time.Nanosecond,
 				BaseList:  []string{"1970-01-01"}, // invalid
 				BeginTime: "",
@@ -438,8 +425,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  1 * time.Nanosecond, // supported
+				Duration:  1 * time.Nanosecond,   // supported
 				BaseList:  []string{"1970-1-1 1:1:1", "1970-01-01 01:01:01"},
 				BeginTime: "",
 				EndTime:   "",
@@ -450,8 +436,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  1 * time.Nanosecond, // supported
+				Duration:  1 * time.Nanosecond,   // supported
 				BaseList:  []string{"1970-1-1 1:1:1", "1970-01-01 01:01:00"},
 				BeginTime: "",
 				EndTime:   "",
@@ -462,8 +447,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  1 * time.Nanosecond, // supported
+				Duration:  1 * time.Nanosecond,   // supported
 				BaseList:  []string{"1970-1-1 1:1:1", "01:01:00"},
 				BeginTime: "",
 				EndTime:   "",
@@ -474,8 +458,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "1970-01-01 01:01:01",
 				EndTime:   "1970-01-01 01:01:02",
@@ -486,8 +469,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "01:01:01",
 				EndTime:   "01:01:02",
@@ -498,8 +480,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "1970-01-01 01:01:01",
 				EndTime:   "01:01:02",
@@ -510,8 +491,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "",
 				EndTime:   "",
@@ -522,8 +502,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01     01:01:01", // supported
 				Location:  "",                        // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,       // supported
 				BaseList:  []string{},
 				BeginTime: "",
 				EndTime:   "",
@@ -534,8 +513,7 @@ func Test_Check_CheckOpts_Location(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "1970-01-01 01:01:01", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "1970-01-01 01:01:02",
 				EndTime:   "1970-01-01 01:01:01",
@@ -562,7 +540,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "", // valid
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -574,7 +551,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05", // valid
 				Location:  "",
-				Repeat:    false,
 				Duration:  1 * time.Nanosecond, // valid
 				BaseList:  []string{"2023-03-06 03:04:06", "2023-03-07 03:04:07"},
 				BeginTime: "",
@@ -587,7 +563,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "heaven", // invalid
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -599,7 +574,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  -1 * time.Nanosecond, // negative duration, invalid
 				BaseList:  []string{},
 				BeginTime: "",
@@ -611,7 +585,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{"2023-03-06"}, // invalid
 				BeginTime: "",
@@ -623,7 +596,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{"2023-03-05 03:04:05", "2023-03-05 03:04:05"}, // invalid
 				BeginTime: "",
@@ -635,7 +607,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05", // supported
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{"2023-03-07 03:04:05", "2023-03-06 03:04:05"},
 				BeginTime: "",
@@ -647,8 +618,7 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{"2023-03-05 03:04:07", "2023-03-05 03:04:06"},
 				BeginTime: "",
 				EndTime:   "",
@@ -659,7 +629,6 @@ func Test_Check_CheckOpts_Baselist(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{"2023-03-05 03:04:06", "03:04:07"},
 				BeginTime: "",
@@ -688,8 +657,7 @@ func Test_Check_CheckOpts_BeginEndTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "03:04:06",
 				EndTime:   "03:04:07",
@@ -700,7 +668,6 @@ func Test_Check_CheckOpts_BeginEndTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "2023-03-05 03:04:06",
@@ -712,7 +679,6 @@ func Test_Check_CheckOpts_BeginEndTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "2023-03-05 03:04:06",
@@ -724,7 +690,6 @@ func Test_Check_CheckOpts_BeginEndTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05",
 				Location:  "",
-				Repeat:    false,
 				Duration:  0 * time.Nanosecond,
 				BaseList:  []string{},
 				BeginTime: "",
@@ -737,8 +702,7 @@ func Test_Check_CheckOpts_BeginEndTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "1970-01-01 01:01:01",
 				EndTime:   "01:01:02",
@@ -749,8 +713,7 @@ func Test_Check_CheckOpts_BeginEndTime(t *testing.T) {
 			opts: Opts{
 				BaseTime:  "2023-03-05 03:04:05", // supported
 				Location:  "",                    // support empty
-				Repeat:    false,
-				Duration:  0 * time.Nanosecond, // supported
+				Duration:  0 * time.Nanosecond,   // supported
 				BaseList:  []string{},
 				BeginTime: "1970-01-01 01:01:02",
 				EndTime:   "1970-01-01 01:01:01",
