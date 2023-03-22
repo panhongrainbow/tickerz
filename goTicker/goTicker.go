@@ -1,6 +1,7 @@
 package goTicker
 
 import (
+	"fmt"
 	tickerBase "github.com/panhongrainbow/tickerz/base"
 	"time"
 )
@@ -364,5 +365,27 @@ func (receive *GoTicker) CalculateWaitList(count int) (waitList []int64, err err
 	}
 
 	// Return the waitList and err values
+	return
+}
+
+func (receive *GoTicker) WaitAccordingList(count int) (err error) {
+	var waitLists []int64
+	waitLists, err = receive.CalculateWaitList(count)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, timePoint := range waitLists {
+		now := time.Now().Unix()
+		wait := timePoint - now
+		if timePoint-now > 0 {
+			timer := time.NewTimer(time.Duration(wait) * time.Second)
+			<-timer.C
+			fmt.Println("時間內執行")
+			timer.Stop()
+		} else {
+			fmt.Println("超過時間後執行")
+		}
+	}
 	return
 }
