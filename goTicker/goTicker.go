@@ -6,11 +6,13 @@ import (
 	"time"
 )
 
+// Define status constants
 const (
-	StatusNewed uint = iota + 1
-	StatusReSet
-	StatusMockTime
-	StatusDead
+	StatusNewed    uint = iota + 1 // 1: Newed status
+	StatusReSet                    // 2: Reset status
+	StatusMockTime                 // 3: Mock time status
+	StatusInactiv                  // 4: Inactive status
+	StatusDead                     // 5: Dead status
 )
 
 var mockDateStr string

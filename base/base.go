@@ -13,6 +13,7 @@ const (
 	DefaultTimeFormatStr     = "15:4:5"
 	DefaultDateTimeFormatStr = "2006-1-2 15:4:5"
 	DefaultTimeZone          = "Asia/Shanghai"
+	DefaultTestTimeZone      = "Pacific/Honolulu"
 )
 
 // time formats

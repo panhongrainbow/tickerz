@@ -1,56 +1,88 @@
 package goTicker
 
 import (
+	"fmt"
 	tickerBase "github.com/panhongrainbow/tickerz/base"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
 
-// [Test_Check_NowDate] is an unit test example that includes two sub-tests,
-// both testing the ReloadLocation and UpdateNowDateOrMock functions of the Base structure.
-//
-// * In the first sub-test,
-// there are three assertion statements that respectively test whether the UpdateNowDateOrMock function returns the expected error when bs.NowDate is empty,
-// whether the ReloadLocation function returns the expected error when bs.Opts.Location is empty,
-// and whether the ReloadLocation function can successfully load the time zone when bs.Opts.Location is not empty.
-//
-// * In the second sub-test, there are also three assertion statements that respectively test whether the TimeType function can successfully identify the format of bs.NowDate
-// after it is updated, and whether bs.NowDate is in the DateFormat format.
-//
-// * The purpose of the entire test is to ensure that the ReloadLocation and UpdateNowDateOrMock functions of the Base structure can work correctly
-// and that the format of bs.NowDate conforms to the expected date format.
-func Test_Check_NowDate(t *testing.T) {
-	t.Run("reload location", func(t *testing.T) {
-		// empty bs time
-		bs := GoTicker{}
-		err := bs.UpdateNowDateOrMock(mockDateStr)
+/*
+Test_Check_GoTicker_UpdateNowDateOrMock is a unit test example that includes two sub-tests,
+both testing the ReloadLocation and UpdateNowDateOrMock functions of the Base structure
+*/
+func Test_Check_GoTicker_UpdateNowDateOrMock(t *testing.T) {
+	gt := GoTicker{}
+	// Test that ReloadLocation function fails if the location is not set
+	t.Run("ReloadLocation should fail if location is not set", func(t *testing.T) {
+		// Set a mocked date as NowDate since the base location is not set
+		err := gt.UpdateNowDateOrMock("") // <<<<< <<<<< <<<<< assistant test sample
 		require.Equal(t, err, tickerBase.ErrNoBaseLocation)
 
-		// reload location
-		bs.Opts.Location = tickerBase.DefaultTimeZone
-		err = bs.ReloadLocation()
+		// Set the default time zone as the base location
+		gt.Opts.Location = tickerBase.DefaultTimeZone
+		err = gt.ReloadLocation() // <<<<< <<<<< <<<<< <<<<< <<<<< main test sample
 		require.NoError(t, err)
 	})
-	t.Run("reload location", func(t *testing.T) {
-		// reload location
-		gt := GoTicker{}
-		gt.Opts.Location = tickerBase.DefaultTimeZone
-		err := gt.ReloadLocation()
+	// Test the UpdateNowDateOrMock function updates the now date successfully
+	t.Run("UpdateNowDateOrMock should update now date successfully", func(t *testing.T) {
+		// Set a mocked date as NowDate
+		err := gt.UpdateNowDateOrMock("") // <<<<< <<<<< <<<<< <<<<< <<<<< main test sample
 		require.NoError(t, err)
 
-		// update now date
-		err = gt.UpdateNowDateOrMock(mockDateStr)
-		require.NoError(t, err)
-
-		// check result
-		tp, err := tickerBase.TimeType(gt.NowDate)
+		// Check that NowDate is updated correctly
+		tp, err := tickerBase.TimeType(gt.NowDate) // <<<<< <<<<< <<<<< assistant test sample
 		require.NoError(t, err)
 		require.Equal(t, tickerBase.DateFormat, tp)
 	})
 }
 
-func Test_Check_New(t *testing.T) {
+/*
+Test_Check_GoTicker_UpdateNowDateOrMockIfNeeded tests the functionality of updating the current date or
+using a mock date if needed in the GoTicker struct
+*/
+func Test_Check_GoTicker_UpdateNowDateOrMockIfNeeded(t *testing.T) {
+	// Set time zone for testing purposes
+	now := time.Now()
+	locationInTest, err := time.LoadLocation(tickerBase.DefaultTestTimeZone)
+	require.Nil(t, err)
+	todayInTest := now.In(locationInTest)
+	require.Equal(t, "Pacific/Honolulu", todayInTest.Location().String())
+	fmt.Println(todayInTest.Format(tickerBase.DefaultDateFormatStr))
+
+	// Set default time zone
+	locationInDefault, err := time.LoadLocation(tickerBase.DefaultTimeZone)
+	require.Nil(t, err)
+	todayInDefault := now.In(locationInDefault)
+	require.Equal(t, "Asia/Shanghai", todayInDefault.Location().String())
+	fmt.Println(todayInDefault.Format(tickerBase.DefaultDateFormatStr))
+
+	// Automatically updates NowDate if base location is not set
+	t.Run("Reloads location automatically and updates NowDate if base location is not set", func(t *testing.T) {
+		gt := GoTicker{}
+		err := gt.updateNowDateOrMockIfNeeded("")
+		require.NoError(t, err)
+		require.Equal(t, todayInDefault.Format(tickerBase.DefaultDateFormatStr), gt.NowDate)
+	})
+	// Updates NowDate if Location is set to the test time zone
+	t.Run("Updates NowDate with current date if base locationInTest is set", func(t *testing.T) {
+		gt := GoTicker{Opts: tickerBase.Opts{Location: tickerBase.DefaultTestTimeZone}}
+		err := gt.updateNowDateOrMockIfNeeded("")
+		require.NoError(t, err)
+		require.Equal(t, todayInTest.Format(tickerBase.DefaultDateFormatStr), gt.NowDate)
+	})
+	// Updates nowDate with mocked date if set
+	t.Run("Updates nowDate with mocked date if set", func(t *testing.T) {
+		gt := GoTicker{}
+		mockDateStr = "1970-1-1"
+		err := gt.updateNowDateOrMockIfNeeded(mockDateStr)
+		require.NoError(t, err)
+		require.Equal(t, mockDateStr, gt.NowDate)
+	})
+}
+
+func Test_Check_GoTicker_New(t *testing.T) {
 	t.Run("check opts", func(t *testing.T) {
 		opts := tickerBase.Opts{}
 		offOpts := tickerBase.OffOpts{}
