@@ -10,7 +10,6 @@ race:
 	go test -race -run='^\QTest_Check_' ./base
 	go test -race -run='^\QTest_Check_' ./goTicker
 help:
-help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "This mechanism is a suite of tests designed to ensure that"

@@ -1,7 +1,7 @@
 package goTicker
 
 import (
-	"fmt"
+	"context"
 	tickerBase "github.com/panhongrainbow/tickerz/base"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -49,14 +49,12 @@ func Test_Check_GoTicker_UpdateNowDateOrMockIfNeeded(t *testing.T) {
 	require.Nil(t, err)
 	todayInTest := now.In(locationInTest)
 	require.Equal(t, "Pacific/Honolulu", todayInTest.Location().String())
-	fmt.Println(todayInTest.Format(tickerBase.DefaultDateFormatStr))
 
 	// Set default time zone
 	locationInDefault, err := time.LoadLocation(tickerBase.DefaultTimeZone)
 	require.Nil(t, err)
 	todayInDefault := now.In(locationInDefault)
 	require.Equal(t, "Asia/Shanghai", todayInDefault.Location().String())
-	fmt.Println(todayInDefault.Format(tickerBase.DefaultDateFormatStr))
 
 	// Automatically updates NowDate if base location is not set
 	t.Run("Reloads location automatically and updates NowDate if base location is not set", func(t *testing.T) {
@@ -253,7 +251,7 @@ func TestGoTicker_Check_calculateRepeatParameter(t *testing.T) {
 }
 
 // TestUsableSubBaseList is a test function with four subtests that checks if
-// the usableSubBaseList function returns the correct list of timestamps
+// the availableSubBaseList function returns the correct list of timestamps
 // within the range of the ticker's BeginStamp and EndStamp.
 // It also checks if the length of the subBaseList matches the expected value.
 func Test_Check_UsableSubBaseList(t *testing.T) {
@@ -320,8 +318,8 @@ func Test_Check_UsableSubBaseList(t *testing.T) {
 	// Run the subtests
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Call the usableSubBaseList function
-			subBaseList, err := test.ticker.usableSubBaseList()
+			// Call the availableSubBaseList function
+			subBaseList, err := test.ticker.availableSubBaseList()
 			require.NoError(t, err)
 
 			// Check if the length of subBaseList matches with the expected value
@@ -342,6 +340,151 @@ func Test_Check_UsableSubBaseList(t *testing.T) {
 			}
 		})
 	}
+}
+
+/*
+This test verifies the functionality of a function called "Check_EndStamp"
+by testing it with two different sequences of time stamps.
+The test checks the output for correctness and compliance with specified conditions.
+*/
+func Test_Check_EndStamp(t *testing.T) {
+	// Test case 1: A sequence of distinct elements in order
+	t.Run("A sequence of distinct elements in order", func(t *testing.T) {
+		// Create a new GoTicker and set its properties
+		now := time.Now()
+		gt := &GoTicker{
+			BaseStamp: now.Unix(),
+			BaseList: []int64{
+				now.Add(-2 * time.Second).Unix(),
+				now.Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(4 * time.Second).Unix(),
+				now.Add(6 * time.Second).Unix(),
+				now.Add(8 * time.Second).Unix(),
+				now.Add(10 * time.Second).Unix(),
+				now.Add(12 * time.Second).Unix(),
+				now.Add(14 * time.Second).Unix(),
+				now.Add(16 * time.Second).Unix(),
+			},
+			BeginStamp: now.Add(-4 * time.Second).Unix(),
+			EndStamp:   now.Add(9 * time.Second).Unix(),
+			Opts: tickerBase.Opts{
+				Duration: time.Second,
+			},
+		}
+
+		// Call the mergeSortedBaseListAndRepeat function with a longer quantity
+		longerList, err := gt.mergeSortedBaseListAndRepeat(50) // <<<<< longer quantity
+		require.NoError(t, err)
+		require.Equal(t, 9, len(longerList))
+
+		// Verify that the first element of longerList is within one second of the current time
+		require.Less(t, longerList[0]-now.Unix(), int64(gt.Opts.Duration.Seconds()))
+
+		/*
+			Verify that each element of longerList is greater than the previous element,
+			the current time, the BeginStamp, and less than the EndStamp
+		*/
+		var previous int64
+		for i := 0; i < len(longerList); i++ {
+			require.Greater(t, longerList[i], previous)
+			require.GreaterOrEqual(t, longerList[i], now.Unix())
+			require.Greater(t, longerList[i], gt.BeginStamp)
+			require.Greater(t, gt.EndStamp, longerList[i])
+		}
+
+		// Verify that the difference between the last element of longerList and the EndStamp is less than one second
+		require.LessOrEqual(t, gt.EndStamp-longerList[len(longerList)-1], int64(gt.Opts.Duration.Seconds()))
+
+		// Call the mergeSortedBaseListAndRepeat function with a shorter quantity
+		shorterList, err := gt.mergeSortedBaseListAndRepeat(5) // <<<<< shorter quantity
+		require.NoError(t, err)
+		require.Equal(t, 5, len(shorterList))
+
+		// Verify that the first element of shorterList is within one second of the current time
+		require.Less(t, shorterList[0]-now.Unix(), int64(gt.Opts.Duration.Seconds()))
+
+		// Verify that each element of shorterList is greater than the previous element, the current time, the BeginStamp, and less than or equal to the EndStamp
+		previous = 0
+		for i := 0; i < len(shorterList); i++ {
+			require.Greater(t, shorterList[i], previous)
+			require.GreaterOrEqual(t, shorterList[i], now.Unix())
+			require.GreaterOrEqual(t, shorterList[i], gt.BeginStamp)
+			require.GreaterOrEqual(t, gt.EndStamp, shorterList[i])
+		}
+
+		// It is impossible to meet this condition because shorterList only contains the first half of the slice of longerList
+		// require.LessOrEqual(t, gt.EndStamp-shorterList[len(shorterList)-1], int64(gt.Opts.Duration.Seconds()))
+	})
+	// Test case 2: A sequence of the same elements in order
+	t.Run("A sequence of the same elements in order", func(t *testing.T) {
+		// Create a new GoTicker and set its properties
+		now := time.Now()
+		gt := &GoTicker{
+			BaseStamp: now.Unix(),
+			BaseList: []int64{
+				now.Add(-2 * time.Second).Unix(),
+				now.Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(9 * time.Second).Unix(),
+			},
+			BeginStamp: now.Add(-4 * time.Second).Unix(),
+			EndStamp:   now.Add(9 * time.Second).Unix(),
+			Opts: tickerBase.Opts{
+				Duration: time.Second,
+			},
+		}
+
+		// Call the mergeSortedBaseListAndRepeat function with a longer quantity
+		longerList, err := gt.mergeSortedBaseListAndRepeat(50) // <<<<< longer quantity
+		require.NoError(t, err)
+		require.Equal(t, 9, len(longerList))
+
+		// Verify that the first element of longerList is within one second of the current time
+		var previous int64
+		require.LessOrEqual(t, longerList[0]-now.Unix(), int64(gt.Opts.Duration.Seconds()))
+
+		/*
+			Verify that each element of longerList is greater than the previous element,
+			the current time, the BeginStamp, and less than the EndStamp
+		*/
+		for i := 0; i < len(longerList); i++ {
+			require.Greater(t, longerList[i], previous)
+			require.GreaterOrEqual(t, longerList[i], now.Unix())
+			require.GreaterOrEqual(t, longerList[i], gt.BeginStamp)
+			require.GreaterOrEqual(t, gt.EndStamp, longerList[i])
+		}
+
+		// Verify that the difference between the last element of longerList and the EndStamp is less than one second
+		require.LessOrEqual(t, gt.EndStamp-longerList[len(longerList)-1], int64(gt.Opts.Duration.Seconds()))
+
+		// Call the mergeSortedBaseListAndRepeat function with a shorter quantity
+		shorterList, err := gt.mergeSortedBaseListAndRepeat(5) // <<<<< shorter quantity
+		require.NoError(t, err)
+		require.Equal(t, 5, len(shorterList))
+
+		// Verify that each element of shorterList is greater than the previous element, the current time, the BeginStamp, and less than or equal to the EndStamp
+		require.Less(t, shorterList[0]-now.Unix(), int64(gt.Opts.Duration.Seconds()))
+
+		// Verify that each element of shorterList is greater than the previous element, the current time, the BeginStamp, and less than or equal to the EndStamp
+		previous = 0
+		for i := 0; i < len(shorterList); i++ {
+			require.Greater(t, shorterList[i], previous)
+			require.GreaterOrEqual(t, shorterList[i], now.Unix())
+			require.GreaterOrEqual(t, shorterList[i], gt.BeginStamp)
+			require.GreaterOrEqual(t, gt.EndStamp, shorterList[i])
+		}
+
+		// It is impossible to meet this condition because shorterList only contains the first half of the slice of longerList
+		// require.LessOrEqual(t, gt.EndStamp-shorterList[len(shorterList)-1], int64(gt.Opts.Duration.Seconds()))
+
+	})
 }
 
 func Test_Check_CalculateWaitTime(t *testing.T) {
@@ -425,6 +568,10 @@ func Test_Check_CalculateWaitTime(t *testing.T) {
 }
 
 func Test_Check_WaitAccordingList(t *testing.T) {
+	// Set time zone for testing purposes
+	locationInTest, err := time.LoadLocation(tickerBase.DefaultTestTimeZone)
+	require.NoError(t, err)
+
 	// Define the subtests
 	tests := []struct {
 		ticker   *GoTicker
@@ -434,8 +581,9 @@ func Test_Check_WaitAccordingList(t *testing.T) {
 		// Test case 1
 		{
 			&GoTicker{
-				BeginStamp: time.Now().Unix(),
-				EndStamp:   time.Now().Add(10 * time.Second).Unix(),
+				BeginStamp:   time.Now().Unix(),
+				BaseLocation: locationInTest,
+				EndStamp:     time.Now().Add(10 * time.Second).Unix(),
 				BaseList: []int64{
 					time.Now().Add(2 * time.Second).Unix(),
 					time.Now().Add(4 * time.Second).Unix(),
@@ -449,7 +597,14 @@ func Test_Check_WaitAccordingList(t *testing.T) {
 	// Run the subtests
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.ticker.WaitAccordingList(10)
+			test.ticker.SignalChan = make(chan tickerBase.TickerSingal)
+			err = test.ticker.updateNowDateOrMockIfNeeded("")
+			require.NoError(t, err)
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			go func() {
+				_ = test.ticker.SendSignals(ctx, 10)
+			}()
 		})
 	}
 }

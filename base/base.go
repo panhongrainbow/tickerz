@@ -45,11 +45,19 @@ const (
 	ErrInactiveBaseList              = Error("inactive base list")
 	ErrInactiveRepeatList            = Error("inactive repeat list")
 	ErrInactiveBaseListAndRepeatList = Error("inactive base list and repeat list")
+	ErrUserInterrupted               = Error("user interrupt")
 )
 
 const (
 	HumanMode uint = iota + 1
 	CommputerMode
+)
+
+const (
+	SignalOnTime uint = iota + 1
+	SignalDelay
+	SignalUserInterrupt
+	SignalAbandonPrevious
 )
 
 type Error string
@@ -73,6 +81,7 @@ type Base struct {
 	Opts           Opts
 	OffOpts        OffOpts
 	Status         uint
+	SignalChan     chan TickerSingal
 }
 
 type Opts struct {
@@ -93,6 +102,11 @@ type OffOpts struct {
 	FridayOff    bool
 	SaturdayOff  bool
 	SundayOff    bool
+}
+
+type TickerSingal struct {
+	Status uint
+	Delay  int64
 }
 
 func init() {
