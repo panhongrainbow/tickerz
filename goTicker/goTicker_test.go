@@ -487,6 +487,48 @@ func Test_Check_EndStamp(t *testing.T) {
 	})
 }
 
+// Test_Check_calculateToNextDay calculates the number of seconds remaining until the end of the current natural day using GoTicker.
+// It doesn't feature a function named updateNowDateOrMockIfNeeded that reloads the time zone upon calling a new function.
+func Test_Check_calculateToNextDay(t *testing.T) {
+	// Load the time zone for testing purposes
+	locationInTest, err := time.LoadLocation(tickerBase.DefaultTestTimeZone)
+	require.NoError(t, err)
+
+	// Set up a new GoTicker with the loaded time zone
+	now := time.Now()
+	gt := &GoTicker{
+		BaseLocation: locationInTest,
+		NowDate:      now.Format(tickerBase.DefaultDateFormatStr),
+	}
+
+	// This code segment calculates and compares the expected wait time until the end of the natural day
+	t.Run("Verify calculated wait time using GoTicker's method", func(t *testing.T) {
+		// Calculate the actual wait time using the GoTicker's "calculateToNextDay" method
+		var endOfDay time.Time
+		endOfDay, err = time.ParseInLocation(tickerBase.DefaultDateTimeFormatStr,
+			now.Format(tickerBase.DefaultDateFormatStr)+" 23:59:59",
+			locationInTest)
+		expectedWait := endOfDay.Unix() - now.Unix()
+
+		// Calculate the actual wait time using the goTicker's "calculateToNextDay" method
+		actualWait, err := gt.calculateToNextDay()
+		require.NoError(t, err)
+
+		// Verify that the expected and actual wait times are equal
+		require.Equal(t, expectedWait, actualWait)
+	})
+
+	// The new function will trigger the "updateNowDateOrMockIfNeeded" function, which will reload the time zone
+	// Additionally, it should be noted that the other functions will not actively modify or reload the time zone
+	t.Run("Test GoTicker panic when BaseLocation is nil", func(t *testing.T) {
+		gt.BaseLocation = nil
+		calcNextDay := func() {
+			_, _ = gt.calculateToNextDay()
+		}
+		require.Panics(t, calcNextDay)
+	})
+}
+
 func Test_Check_CalculateWaitTime(t *testing.T) {
 	t.Run("check base list", func(t *testing.T) {
 		opts := tickerBase.Opts{
@@ -597,7 +639,7 @@ func Test_Check_WaitAccordingList(t *testing.T) {
 	// Run the subtests
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			test.ticker.SignalChan = make(chan tickerBase.TickerSingal)
+			test.ticker.SignalChan = make(chan tickerBase.TickerSignal)
 			err = test.ticker.updateNowDateOrMockIfNeeded("")
 			require.NoError(t, err)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -606,5 +648,16 @@ func Test_Check_WaitAccordingList(t *testing.T) {
 				_ = test.ticker.SendSignals(ctx, 10)
 			}()
 		})
+	}
+}
+
+func Benchmark_Performance_SendSignals(b *testing.B) {
+	j := 1
+	now := time.Now()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		/*timer := time.NewTimer(10 * time.Nanosecond)
+		<-timer.C*/
+		time.Sleep(time.Until(now.Add(time.Duration(10*j) * time.Nanosecond)))
 	}
 }

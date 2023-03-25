@@ -11,7 +11,7 @@ const (
 	StatusNewed                  uint = iota + 1 // 1: Newed status
 	StatusProducedWaitListBefore                 // 2: Produced wait list before status
 	StatusWaitForTomorrow                        // 3: Wait for tomorrow status
-	StatusRecover                                // 4 Recover Status
+	StatusRecover                                // 4: Recover Status
 	StatusMockTime                               // 5: Mock time status
 	StatusInactiv                                // 6: Inactive status
 	StatusDead                                   // 7: Dead status
@@ -55,7 +55,7 @@ func New(opts tickerBase.Opts, offOpts tickerBase.OffOpts) (output *GoTicker, er
 	output = new(GoTicker)
 	output.Opts = opts
 	output.OffOpts = offOpts
-	output.SignalChan = make(chan tickerBase.TickerSingal)
+	output.SignalChan = make(chan tickerBase.TickerSignal)
 
 	// If base location is not set, try to reload the location and update the nowDate again
 	// ( "receive.UpdateNowDateOrMock(mockDateStr)" may be called twice, which may cause code duplication.
@@ -154,7 +154,7 @@ func New(opts tickerBase.Opts, offOpts tickerBase.OffOpts) (output *GoTicker, er
 		return
 	}
 
-	// Set the Status value to StatusNewed
+	// Set the SignalStatus value to StatusNewed
 	output.Status = StatusNewed
 
 	// Return the output and err values
@@ -376,7 +376,6 @@ func (receive *GoTicker) availableSubBaseList() (output []int64, err error) {
 
 // CalculateWaitList calculates a wait list by merging sorted base lists and a repeat list based on given parameters.
 func (receive *GoTicker) CalculateWaitList(quantity int) (waitList []int64, err error) {
-
 	// Merge the sorted baseList and repeat parameter into a waitList of specified quantity
 	waitList, err = receive.mergeSortedBaseListAndRepeat(quantity)
 	if len(waitList) == 0 {
@@ -390,44 +389,62 @@ func (receive *GoTicker) CalculateWaitList(quantity int) (waitList []int64, err 
 	return
 }
 
+// calculateToNextDay calculates the remaining time until the next day based on the current time in a given timezone, and the date provided.
 func (receive *GoTicker) calculateToNextDay() (waitSecond int64, err error) {
-	//
+	// Get the current time in the timezone of the ticker
 	currentInTicker := time.Now().In(receive.BaseLocation)
 
-	//
-	var netxInTicker time.Time
-	netxInTicker, err = time.ParseInLocation(tickerBase.DefaultDateTimeFormatStr,
+	// Create a time.Time object for the next day at 23:59:59 in the timezone of the ticker
+	var endOfDay time.Time
+	endOfDay, err = time.ParseInLocation(tickerBase.DefaultDateTimeFormatStr,
 		receive.NowDate+" 23:59:59",
 		receive.BaseLocation)
 
-	//
-	waitSecond = netxInTicker.Unix() - currentInTicker.Unix()
+	// Calculate the number of seconds to wait until the next day
+	waitSecond = endOfDay.Unix() - currentInTicker.Unix()
 
-	//
+	// Return the wait time in seconds
 	return
 }
 
+// waitForNextDay waits for the next day and returns any errors encountered,
+// by calculating the time to wait until tomorrow,
+// setting a timer with the calculated wait time plus 2 seconds to ensure it enters the next day,
+// renewing the ticker for the next day, and setting the status to indicate recovery
 func (receive *GoTicker) waitForNextDay() (err error) {
-
+	// Set the status to indicate waiting for tomorrow
 	receive.Status = StatusWaitForTomorrow
 
+	// Calculate the time to wait until tomorrow
 	var waitForTomorrow int64
 	waitForTomorrow, err = receive.calculateToNextDay()
 	if err != nil {
 		return
 	}
 
+	// Create a new timer with the calculated wait time plus 2 seconds
+	// The 2-second addition is to ensure that the timer really enters the next day !
 	timer := time.NewTimer(time.Duration(waitForTomorrow)*time.Second + 2*time.Second)
 	<-timer.C
+
+	/*
+		Stop the timer:
+		It would be better to move timer.Stop() outside the function
+		so that the timer can be manually stopped if needed
+		However, it is not very harmful to forcibly stop the program here
+	*/
 	timer.Stop()
 
+	// Renew the ticker for the next day
 	err = receive.ReNew()
 	if err != nil {
 		return
 	}
 
+	// Set the status to indicate recovery
 	receive.Status = StatusRecover
 
+	// Return the err value
 	return
 }
 
@@ -455,8 +472,8 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 			select {
 			// If the context is done, send a user interrupt signal and return
 			case <-ctx.Done():
-				receive.SignalChan <- tickerBase.TickerSingal{
-					Status: tickerBase.SignalUserInterrupt,
+				receive.SignalChan <- tickerBase.TickerSignal{
+					SignalStatus: tickerBase.SignalUserInterrupt,
 				}
 				return
 			default:
@@ -468,15 +485,18 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 					timer := time.NewTimer(time.Duration(waitForSeconds) * time.Second)
 					<-timer.C
 					// Send an on-time signal when the time point is reached.
-					receive.SignalChan <- tickerBase.TickerSingal{
-						Status: tickerBase.SignalOnTime,
+					receive.SignalChan <- tickerBase.TickerSignal{
+						SignalStatus: tickerBase.SignalOnTime,
+						SerialNumber: receive.SerialHandler(waitPoint),
 					}
+					// Stop the timer
 					timer.Stop()
 				} else {
 					// Send an on-time signal with the delay time if the time point is already passed
-					receive.SignalChan <- tickerBase.TickerSingal{
-						Status: tickerBase.SignalOnTime,
-						Delay:  -1 * waitForSeconds}
+					receive.SignalChan <- tickerBase.TickerSignal{
+						SignalStatus: tickerBase.SignalOnTime,
+						SerialNumber: receive.SerialHandler(waitPoint),
+						DelaySeconds: -1 * waitForSeconds}
 				}
 			}
 		}
