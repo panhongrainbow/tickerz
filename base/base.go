@@ -57,6 +57,7 @@ const (
 	SignalOnTime uint = iota + 1
 	SignalDelay
 	SignalUserInterrupt
+	SignalWaitForTomorrow
 	SignalAbandonPrevious
 )
 

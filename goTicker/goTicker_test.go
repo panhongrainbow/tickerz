@@ -651,13 +651,49 @@ func Test_Check_WaitAccordingList(t *testing.T) {
 	}
 }
 
-func Benchmark_Performance_SendSignals(b *testing.B) {
-	j := 1
-	now := time.Now()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		/*timer := time.NewTimer(10 * time.Nanosecond)
-		<-timer.C*/
-		time.Sleep(time.Until(now.Add(time.Duration(10*j) * time.Nanosecond)))
-	}
+// Test_Check_SendSignals sends various signals from a GoTicker and verifies their signal status.
+func Test_Check_SendSignals(t *testing.T) {
+	/*
+		Creates a GoTicker instance, sends signals, and verifies the signal status,
+		ensuring that the ticker is functioning correctly
+	*/
+	t.Run("sends signals and verifies the signal status SignalWaitForTomorrow.", func(t *testing.T) {
+		// Get the current time
+		now := time.Now()
+
+		// Create a new GoTicker and set its properties
+		gt := &GoTicker{
+			BaseStamp: now.Unix(),
+			BaseList: []int64{
+				now.Add(2 * time.Second).Unix(),
+				now.Add(4 * time.Second).Unix(),
+				now.Add(6 * time.Second).Unix(),
+			},
+			BeginStamp: now.Add(6 * time.Second).Unix(),
+			EndStamp:   now.Add(10 * time.Second).Unix(),
+			Opts: tickerBase.Opts{
+				Duration: time.Nanosecond,
+			},
+		}
+		// Create a channel to receive signals from the ticker
+		gt.SignalChan = make(chan tickerBase.TickerSignal)
+		// Reload the location information for the ticker
+		err := gt.ReloadLocation()
+		require.NoError(t, err)
+		// Update the ticker's current date
+		err = gt.UpdateNowDateOrMock("")
+		require.NoError(t, err)
+
+		// Start a new goroutine to send signals from the ticker
+		go func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			err = gt.SendSignals(ctx, 50)
+			require.NoError(t, err)
+		}()
+
+		// Wait for a signal from the ticker and verify its status
+		signalFromTicker := <-gt.SignalChan
+		require.Equal(t, tickerBase.SignalWaitForTomorrow, signalFromTicker.SignalStatus)
+	})
 }

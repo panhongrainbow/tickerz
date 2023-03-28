@@ -25,6 +25,7 @@ type GoTicker tickerBase.Base
 func (receive *GoTicker) updateNowDateOrMockIfNeeded(mockDateStr string) (err error) {
 	// Update nowDate with the current date or mocked date if it's set
 	err = receive.UpdateNowDateOrMock(mockDateStr)
+
 	// If base location is not set, reload location and update nowDate again
 	if err == tickerBase.ErrNoBaseLocation {
 		// Reload location
@@ -38,6 +39,7 @@ func (receive *GoTicker) updateNowDateOrMockIfNeeded(mockDateStr string) (err er
 			return
 		}
 	}
+
 	// Return err values
 	return
 }
@@ -266,6 +268,7 @@ func (receive *GoTicker) mergeSortedBaseListAndRepeat(quantity int) (waitList []
 	var availableSubBaseList []int64
 	availableSubBaseList, err = receive.availableSubBaseList()
 	if err == nil && previousErr != nil {
+		// Only record the errors that have occurred so far, without immediately returning or reporting them
 		err = previousErr
 	}
 
@@ -461,6 +464,13 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 		*/
 		if err == tickerBase.ErrInactiveBaseListAndRepeatList &&
 			receive.Status == StatusProducedWaitListBefore {
+
+			// Send a signal to the ticker channel to wait until the next day to produce the wait list
+			receive.SignalChan <- tickerBase.TickerSignal{
+				SignalStatus: tickerBase.SignalWaitForTomorrow,
+			}
+
+			// Wait for the next day
 			err = receive.waitForNextDay()
 			if err != nil {
 				return
@@ -487,16 +497,29 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 					// Send an on-time signal when the time point is reached.
 					receive.SignalChan <- tickerBase.TickerSignal{
 						SignalStatus: tickerBase.SignalOnTime,
-						SerialNumber: receive.SerialHandler(waitPoint),
+						// Generate and set a serial number if a serial handler function exists
+						SerialNumber: func() (serial uint) {
+							if receive.SerialHandler != nil {
+								serial = receive.SerialHandler(waitPoint)
+							}
+							return
+						}(),
 					}
 					// Stop the timer
 					timer.Stop()
 				} else {
 					// Send an on-time signal with the delay time if the time point is already passed
 					receive.SignalChan <- tickerBase.TickerSignal{
-						SignalStatus: tickerBase.SignalOnTime,
-						SerialNumber: receive.SerialHandler(waitPoint),
-						DelaySeconds: -1 * waitForSeconds}
+						SignalStatus: tickerBase.SignalDelay,
+						// Generate and set a serial number if a serial handler function exists
+						SerialNumber: func() (serial uint) {
+							if receive.SerialHandler != nil {
+								serial = receive.SerialHandler(waitPoint)
+							}
+							return
+						}(),
+						DelaySeconds: -1 * waitForSeconds,
+					}
 				}
 			}
 		}
