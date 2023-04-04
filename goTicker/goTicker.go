@@ -21,8 +21,8 @@ var mockDateStr string
 
 type GoTicker tickerBase.Base
 
-// updateNowDateOrMockIfNeeded updates ticker parameters and reloads location information if necessary.
-func (receive *GoTicker) updateNowDateOrMockIfNeeded(mockDateStr string) (err error) {
+// updateNowDateOrMockAndReloadLocation updates ticker parameters and reloads location information if necessary.
+func (receive *GoTicker) updateNowDateOrMockAndReloadLocation(mockDateStr string) (err error) {
 	// Update nowDate with the current date or mocked date if it's set
 	err = receive.UpdateNowDateOrMock(mockDateStr)
 
@@ -62,7 +62,7 @@ func New(opts tickerBase.Opts, offOpts tickerBase.OffOpts) (output *GoTicker, er
 	// If base location is not set, try to reload the location and update the nowDate again
 	// ( "receive.UpdateNowDateOrMock(mockDateStr)" may be called twice, which may cause code duplication.
 	// Extract it into a separate function or variable to reduce duplicated code.)
-	err = output.updateNowDateOrMockIfNeeded(mockDateStr)
+	err = output.updateNowDateOrMockAndReloadLocation(mockDateStr)
 	if err != nil {
 		return
 	}

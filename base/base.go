@@ -122,218 +122,274 @@ func init() {
 
 var defaultTimeLocation *time.Location
 
-func TimeType(input string) (output uint, err error) {
-	if input == "" {
-		output = EmptyTimeFormat
+/*
+TimeType determines the type of time format based on the string str,
+and returns the format code tType and error err.
+*/
+func TimeType(str string) (tType uint, err error) {
+	// If the str string is empty, set the tType format code to EmptyTimeFormat and return
+	if str == "" {
+		tType = EmptyTimeFormat
 		return
 	}
-	if _, err = time.Parse(DefaultDateFormatStr, input); err == nil {
-		output = DateFormat
+	/*
+		If the str string matches the default date format,
+		set the tType format code to DateFormat and return
+	*/
+	if _, err = time.Parse(DefaultDateFormatStr, str); err == nil {
+		tType = DateFormat
 		return
 	}
-	if _, err = time.Parse(DefaultTimeFormatStr, input); err == nil {
-		output = TimeFormat
+	/*
+		If the str string matches the default time format,
+		set the tType format code to TimeFormat and return
+	*/
+	if _, err = time.Parse(DefaultTimeFormatStr, str); err == nil {
+		tType = TimeFormat
 		return
 	}
-	if _, err = time.Parse(DefaultDateTimeFormatStr, input); err == nil {
-		output = DatetimeFormat
+	/*
+		If the str string matches the default date-time format,
+		set the tType format code to DatetimeFormat and return
+	*/
+	if _, err = time.Parse(DefaultDateTimeFormatStr, str); err == nil {
+		tType = DatetimeFormat
 		return
 	}
-
+	/*
+		If none of the above conditions are met,
+		set the error to ErrUnSupportedTimeFormat and return
+	*/
 	err = ErrUnSupportedTimeFormat
 	return
 }
 
-// TimeValue is a function named TimeValue which takes in two arguments - a string input representing a datetime value,
-// and a pointer to a time.Location value named location.
-// * The function returns an int64 value representing the Unix time of the input datetime value and an error.
-// * The function first checks if the location argument is nil, and if so, sets it to a default time location.
-// It then attempts to parse the input string as a datetime value using the time.ParseInLocation function, with the given location.
-// If there is an error, the function returns an error message indicating that the input is not a datetime value.
-// * If the parsing is successful, the function converts the parsed time.
-// Time value to a Unix timestamp using the Unix() method and assigns it to the output variable.
-// * The function then returns the output value and a nil error.
-func TimeValue(input string, location *time.Location) (output int64, err error) {
+/*
+TimeValue parses the dateTimeStr string dateTimeStr as a date-time in the specified location,
+and returns its Unix timestamp in seconds.
+*/
+func TimeValue(dateTimeStr string, location *time.Location) (timeStamp int64, err error) {
+	// If no location is specified, use the default time zone
 	if location == nil {
 		location = defaultTimeLocation
 	}
+	// Parse the dateTimeStr string dateTimeStr as a date-time in the specified location
 	var tmp time.Time
-	tmp, err = time.ParseInLocation(DefaultDateTimeFormatStr, input, location)
+	tmp, err = time.ParseInLocation(DefaultDateTimeFormatStr, dateTimeStr, location)
+	// If an error occurs during parsing, set the error to ErrTimeParsion
 	if err != nil {
 		err = ErrTimeParsion
 	}
-	output = tmp.Unix()
+	// Set the timeStamp value to the Unix timestamp in seconds
+	timeStamp = tmp.Unix()
+	// Return the timeStamp and err values
 	return
 }
 
-// CheckOpts defines a method CheckOpts() on a struct Opts.
-// * The purpose of this method is to validate various properties of the Opts struct,
-// including the format and order of various time-related fields.
-// * The method first checks the BaseTime field to ensure that it is in a supported format.
-// It then checks the Location field to ensure that it contains a valid time zone.
-// The Duration field is also checked to ensure that it is a positive value.
-// * The method then checks the BaseList field, which is a list of time strings.
-// Each string is checked to ensure that it is in a supported format and that all strings in the list have the same format.
-// The order of the strings in the list is also checked to ensure that they are in chronological order.
-// * Next, the method checks the BeginTime and EndTime fields to ensure that
-// they are in a supported format and that they are the same type.
-// If both fields are present, the method checks that BeginTime comes before EndTime.
-// * Finally, the method returns an error if any of the checks fail, or nil if all checks pass.
+// CheckOpts is
 func (receive *Opts) CheckOpts() (err error) {
 	// check base time
 	var tp uint
 	tp, err = TimeType(receive.BaseTime)
+	//
 	if err == ErrUnSupportedTimeFormat {
 		return
 	}
+	//
 	if tp != TimeFormat && tp != DatetimeFormat {
 		err = ErrUnsupBasetime
 		return
 	}
 
-	// check location
+	//
 	if receive.Location == "" {
 		receive.Location = DefaultTimeZone
 	}
+	//
 	_, err = time.LoadLocation(receive.Location)
+	//
 	if err != nil {
 		err = ErrUnSupportedLocation
 		return
 	}
 
-	// check duration
+	//
 	if receive.Duration.Nanoseconds() < 0 {
 		err = ErrNegativeDuration
 		return
 	}
 
-	// check base list
+	//
 	now := time.Now()
+	//
 	date := now.Format("2006-1-2")
+	//
 	var previous time.Time
+	//
 	var previousType uint
+	//
 	for i := 0; i < len(receive.BaseList); i++ {
+		//
 		tp, err = TimeType(receive.BaseList[i])
+		//
 		if err != nil {
 			return
 		}
+		//
 		if tp != TimeFormat && tp != DatetimeFormat {
 			err = ErrUnSupportedBaseList
 			return
 		}
 
-		// make new datetime string
+		//
 		var datetime string
+		//
 		if tp == TimeFormat {
 			datetime = date + " " + receive.BaseList[i]
 		}
+		//
 		if tp == DatetimeFormat {
 			datetime = receive.BaseList[i]
 		}
 
-		// check if this base list contains products of different types？
+		//
 		if previousType == 0 {
+			//
 			previousType = tp
+			//
 		} else if previousType != 0 &&
 			previousType != tp {
+			//
 			err = ErrBaseListDifferentTypes
 			return
 		}
 
-		// check base list order
+		//
 		var tmp time.Time
 		tmp, err = time.Parse(DefaultDateTimeFormatStr, datetime)
+		//
 		if err != nil {
-			// return the original error message
 			return
 		}
+		//
 		if !previous.Before(tmp) {
 			err = ErrIncorrectBaseListOrder
 			return
+			//
 		} else if previous.Before(tmp) {
+			//
 			previous = tmp
 		}
 	}
 
-	// check begin time type
+	//
 	var beginTp uint
 	beginTp, err = TimeType(receive.BeginTime)
+	//
 	if err != nil {
+		//
 		err = ErrUnSupportedBeginTimeFormat
 		return
 	}
+	//
 	if beginTp != TimeFormat &&
 		beginTp != DatetimeFormat &&
 		beginTp != EmptyTimeFormat {
+		//
 		err = ErrUnSupportedBeginTimeFormat
 		return
 	}
 
-	// check end time type
+	//
 	var endTp uint
 	endTp, err = TimeType(receive.EndTime)
+	//
 	if err != nil {
+		//
 		err = ErrUnSupportedEndTimeFormat
 		return
 	}
+	//
 	if endTp != TimeFormat &&
 		endTp != DatetimeFormat &&
 		endTp != EmptyTimeFormat {
+		//
 		err = ErrUnSupportedEndTimeFormat
 		return
 	}
 
-	// accept EmptyTimeFormat on either side
+	//
 	if (beginTp == EmptyTimeFormat && endTp == DatetimeFormat) ||
 		(beginTp == DatetimeFormat && endTp == EmptyTimeFormat) {
+		//
 		return
 	}
 
-	// receive.BeginTime's type must be the same as receive.EndTime's
+	//
 	if beginTp != endTp {
+		//
 		err = ErrBeginEndTimeTypeNotEqual
 		return
 	}
 
-	// check begin time and end time order
+	//
 	var begintimeStr string
 	var beginTime time.Time
+	//
 	if receive.BeginTime != "" {
+		//
 		if beginTp == TimeFormat {
+			//
 			begintimeStr = date + " " + receive.BeginTime
 		}
+		//
 		if beginTp == DatetimeFormat {
+			//
 			begintimeStr = receive.BeginTime
 		}
+		//
 		beginTime, err = time.Parse(DefaultDateTimeFormatStr, begintimeStr)
 		if err != nil {
-			// return the original error message
+			//
 			return
 		}
 	}
 
+	//
 	var endtimeStr string
+	//
 	var endTime time.Time
+	//
 	if receive.EndTime != "" {
+		//
 		if endTp == TimeFormat {
+			//
 			endtimeStr = date + " " + receive.EndTime
 		}
+		//
 		if endTp == DatetimeFormat {
+			//
 			endtimeStr = receive.EndTime
 		}
+		//
 		endTime, err = time.Parse(DefaultDateTimeFormatStr, endtimeStr)
+		//
 		if err != nil {
-			// return the original error message
+			//
 			return
 		}
 	}
 
+	//
 	if receive.BeginTime != "" && receive.EndTime != "" {
+		//
 		if !beginTime.Before(endTime) {
+			//
 			err = ErrIncorrectBeginEndTimeOrder
 			return
 		}
 	}
 
+	//
 	return
 }
