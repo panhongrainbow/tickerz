@@ -25,17 +25,17 @@ const (
 )
 
 const (
-	ErrBaseListDifferentTypes        = Error("base list contains products of different types")
-	ErrBaseListOverlaps              = Error("base list overlaps")
-	ErrBeginEndTimeTypeNotEqual      = Error("begin time's type is not the same as end time's")
-	ErrIncorrectBaseListOrder        = Error("incorrect base list order")
-	ErrIncorrectBeginEndTimeOrder    = Error("incorrect begin end time order")
-	ErrNegativeDuration              = Error("negative time duration")
-	ErrNoBaseLocation                = Error("no base location")
-	ErrUnsupBasetime                 = Error("unsupported basetime")
-	ErrUnSupportedBaseList           = Error("unsuported base list")
-	ErrUnSupportedBeginTimeFormat    = Error("unsupported begin time format")
-	ErrUnSupportedEndTimeFormat      = Error("unsupported end time format")
+	ErrBaseListDifferentTypes          = Error("base list contains products of different types")
+	ErrBaseListOverlaps                = Error("base list overlaps")
+	ErrBeginEndTimeTypeNotEqual        = Error("begin time's type is not the same as end time's")
+	ErrIncorrectBaseListOrder          = Error("incorrect base list order")
+	ErrIncorrectBeginEndTimeOrder      = Error("incorrect begin end time order")
+	ErrNegativeDuration                = Error("negative time duration")
+	ErrNoBaseLocation                  = Error("no base location")
+	ErrUnsupBasetime                   = Error("unsupported basetime")
+	ErrUnSupportedBaseList             = Error("unsuported base list")
+	ErrUnSupportedBeginOrEndTimeFormat = Error("unsupported begin or end time format")
+	// ErrUnSupportedEndTimeFormat        = Error("unsupported end time format")
 	ErrUnSupportedLocation           = Error("unsupported location")
 	ErrUnSupportedTimeFormat         = Error("unsupported time format")
 	ErrNoOptLocation                 = Error("no opt location")
@@ -186,210 +186,204 @@ func TimeValue(dateTimeStr string, location *time.Location) (timeStamp int64, er
 	return
 }
 
-// CheckOpts is
+// CheckOpts function is responsible for validating the received Opts structure.
 func (receive *Opts) CheckOpts() (err error) {
-	// check base time
+	// Validate the format of the base time
 	var tp uint
 	tp, err = TimeType(receive.BaseTime)
-	//
+	// If the base time format is not supported, return an error
 	if err == ErrUnSupportedTimeFormat {
 		return
 	}
-	//
+	// Check if the time type is either TimeFormat or DatetimeFormat
 	if tp != TimeFormat && tp != DatetimeFormat {
 		err = ErrUnsupBasetime
 		return
 	}
 
-	//
+	// If the location is empty, set it to the default time zone
 	if receive.Location == "" {
 		receive.Location = DefaultTimeZone
 	}
-	//
+	// Load the location to validate it
 	_, err = time.LoadLocation(receive.Location)
-	//
+	// if the location is not supported, return an error
 	if err != nil {
 		err = ErrUnSupportedLocation
 		return
 	}
 
-	//
+	// Validate that the duration is not negative
 	if receive.Duration.Nanoseconds() < 0 {
 		err = ErrNegativeDuration
 		return
 	}
 
-	//
+	// Set the current time
 	now := time.Now()
-	//
+	// Set the date format
 	date := now.Format("2006-1-2")
-	//
-	var previous time.Time
-	//
-	var previousType uint
-	//
-	for i := 0; i < len(receive.BaseList); i++ {
-		//
-		tp, err = TimeType(receive.BaseList[i])
-		//
-		if err != nil {
-			return
-		}
-		//
-		if tp != TimeFormat && tp != DatetimeFormat {
-			err = ErrUnSupportedBaseList
-			return
-		}
 
-		//
-		var datetime string
-		//
-		if tp == TimeFormat {
-			datetime = date + " " + receive.BaseList[i]
-		}
-		//
-		if tp == DatetimeFormat {
-			datetime = receive.BaseList[i]
-		}
-
-		//
-		if previousType == 0 {
-			//
-			previousType = tp
-			//
-		} else if previousType != 0 &&
-			previousType != tp {
-			//
-			err = ErrBaseListDifferentTypes
-			return
-		}
-
-		//
-		var tmp time.Time
-		tmp, err = time.Parse(DefaultDateTimeFormatStr, datetime)
-		//
-		if err != nil {
-			return
-		}
-		//
-		if !previous.Before(tmp) {
-			err = ErrIncorrectBaseListOrder
-			return
-			//
-		} else if previous.Before(tmp) {
-			//
-			previous = tmp
-		}
-	}
-
-	//
-	var beginTp uint
-	beginTp, err = TimeType(receive.BeginTime)
-	//
+	// Check the validity of the baseList
+	err = checkOptsBaseList(receive.BaseList, date)
 	if err != nil {
-		//
-		err = ErrUnSupportedBeginTimeFormat
-		return
-	}
-	//
-	if beginTp != TimeFormat &&
-		beginTp != DatetimeFormat &&
-		beginTp != EmptyTimeFormat {
-		//
-		err = ErrUnSupportedBeginTimeFormat
 		return
 	}
 
-	//
-	var endTp uint
-	endTp, err = TimeType(receive.EndTime)
-	//
+	// Declare variables for begin and end time types
+	var beginTp, endTp uint
+	// Declare variables for begin and end times
+	var beginTime, endTime time.Time
+	// Check the validity of the beginTime and convert it to a time.Time object
+	beginTp, beginTime, err = checkOptsBeginEndTimeToTime(receive.BeginTime, date)
 	if err != nil {
-		//
-		err = ErrUnSupportedEndTimeFormat
 		return
 	}
-	//
-	if endTp != TimeFormat &&
-		endTp != DatetimeFormat &&
-		endTp != EmptyTimeFormat {
-		//
-		err = ErrUnSupportedEndTimeFormat
+	// Check the validity of the endTime and convert it to a time.Time object
+	endTp, endTime, err = checkOptsBeginEndTimeToTime(receive.EndTime, date)
+	if err != nil {
 		return
 	}
 
-	//
+	// If either the begin time or the end time is empty, return immediately
 	if (beginTp == EmptyTimeFormat && endTp == DatetimeFormat) ||
 		(beginTp == DatetimeFormat && endTp == EmptyTimeFormat) {
-		//
 		return
 	}
 
-	//
+	// If the time types of begin time and end time are not equal, return an error
 	if beginTp != endTp {
-		//
+		// Assign the value of ErrBeginEndTimeTypeNotEqual to err and return
 		err = ErrBeginEndTimeTypeNotEqual
 		return
 	}
 
-	//
-	var begintimeStr string
-	var beginTime time.Time
-	//
-	if receive.BeginTime != "" {
-		//
-		if beginTp == TimeFormat {
-			//
-			begintimeStr = date + " " + receive.BeginTime
-		}
-		//
-		if beginTp == DatetimeFormat {
-			//
-			begintimeStr = receive.BeginTime
-		}
-		//
-		beginTime, err = time.Parse(DefaultDateTimeFormatStr, begintimeStr)
-		if err != nil {
-			//
-			return
-		}
-	}
-
-	//
-	var endtimeStr string
-	//
-	var endTime time.Time
-	//
-	if receive.EndTime != "" {
-		//
-		if endTp == TimeFormat {
-			//
-			endtimeStr = date + " " + receive.EndTime
-		}
-		//
-		if endTp == DatetimeFormat {
-			//
-			endtimeStr = receive.EndTime
-		}
-		//
-		endTime, err = time.Parse(DefaultDateTimeFormatStr, endtimeStr)
-		//
-		if err != nil {
-			//
-			return
-		}
-	}
-
-	//
+	// Check if both the begin time and end time have values
 	if receive.BeginTime != "" && receive.EndTime != "" {
-		//
+		// Compare the begin time and end time to check if they are in the correct order
 		if !beginTime.Before(endTime) {
-			//
+			// If the begin time is after or equal to the end time, return an error
 			err = ErrIncorrectBeginEndTimeOrder
 			return
 		}
 	}
 
-	//
+	/*
+		If the function has reached this point,
+		it means the begin and end times are valid and in the correct order,
+		so return without errors
+	*/
+	return
+}
+
+/*
+checkOptsBaseList checks baseList validity.
+It validates each base time format and checks if the time type is TimeFormat or DatetimeFormat.
+It also checks if all elements in baseList have the same time format.
+*/
+func checkOptsBaseList(baseList []string, date string) (err error) {
+	var tp uint
+	// Initialize the previous time to zero
+	var previous time.Time
+	// Initialize the previous time type to zero
+	var previousType uint
+	// Loop through the base list
+
+	for i := 0; i < len(baseList); i++ {
+		// Validate the format of each base time
+		tp, err = TimeType(baseList[i])
+		// If the format is not supported, return an error
+		if err != nil {
+			return
+		}
+		// Check if the time type is either TimeFormat or DatetimeFormat
+		if tp != TimeFormat && tp != DatetimeFormat {
+			err = ErrUnSupportedBaseList
+			return
+		}
+
+		// Set the datetime string based on the time type
+		var datetime string
+		if tp == TimeFormat {
+			datetime = date + " " + baseList[i]
+		}
+		if tp == DatetimeFormat {
+			datetime = baseList[i]
+		}
+
+		// Check if the previous time type matches the current time type
+		if previousType == 0 {
+			previousType = tp
+		} else if previousType != 0 &&
+			previousType != tp {
+			err = ErrBaseListDifferentTypes
+			return
+		}
+
+		// Parse the datetime string into a time.Time object
+		var tmp time.Time
+		tmp, err = time.Parse(DefaultDateTimeFormatStr, datetime)
+		if err != nil {
+			return
+		}
+		// Check if the current time is not before the previous time
+		if !previous.Before(tmp) {
+			err = ErrIncorrectBaseListOrder
+			return
+		} else if previous.Before(tmp) {
+			previous = tmp
+		}
+	}
+
+	/*
+		If the function has reached this point,
+		it means the base list is valid and in the correct order,
+		so return without errors
+	*/
+	return
+}
+
+/*
+checkOptsBeginEndTimeToTime validates a begin or end time string, converts it into a time.Time object, and returns the time type and an error if there is any.
+It supports specific time formats and returns an error if the format is unsupported.
+*/
+func checkOptsBeginEndTimeToTime(beginEndTimeStr string, date string) (beginEndTimeType uint, beginEndTime time.Time, err error) {
+	// Validate the format of the begin or end time string and convert it to time type
+	beginEndTimeType, err = TimeType(beginEndTimeStr)
+	// If the format is not supported, return an error
+	if err != nil {
+		// Assign the value of ErrUnSupportedBeginOrEndTimeFormat to err and return
+		err = ErrUnSupportedBeginOrEndTimeFormat
+		return
+	}
+	// Check if the value of beginTp or endTp does not match any of the supported time formats
+	if beginEndTimeType != TimeFormat &&
+		beginEndTimeType != DatetimeFormat &&
+		beginEndTimeType != EmptyTimeFormat {
+		// Assign the value of ErrUnSupportedBeginOrEndTimeFormat to err and return
+		err = ErrUnSupportedBeginOrEndTimeFormat
+		return
+	}
+
+	// Parse the begin or end time string into a time.Time object using the correct format
+	var newTimeStr string
+	// Check if the begin or end time string is not empty
+	if beginEndTimeStr != "" {
+		// If the format of the begin or end time is TimeFormat, concatenate the date with the begin time string
+		if beginEndTimeType == TimeFormat {
+			newTimeStr = date + " " + beginEndTimeStr
+		}
+		// If the format of the begin or end time is DatetimeFormat, use the begin or end time string as received
+		if beginEndTimeType == DatetimeFormat {
+			newTimeStr = beginEndTimeStr
+		}
+		// Parse the begin or end time string into a time.Time object using the DefaultDateTimeFormatStr format
+		beginEndTime, err = time.Parse(DefaultDateTimeFormatStr, newTimeStr)
+		if err != nil {
+			return
+		}
+	}
+
+	// Return the beginEndTimeType, beginEndTime and err values
 	return
 }

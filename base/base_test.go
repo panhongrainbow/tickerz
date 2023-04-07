@@ -727,3 +727,117 @@ func Test_Check_CheckOpts_BeginEndTime(t *testing.T) {
 		require.Equal(t, tests[i].err, (tests[i].opts).CheckOpts())
 	}
 }
+
+/*
+Test_Check_checkOptsBaseList checks if the checkOptsBaseList function correctly validates the format of baseList.
+It includes test cases for valid and invalid baseList formats and orders.
+*/
+func Test_Check_checkOptsBaseList(t *testing.T) {
+	// Define test cases
+	tests := []struct {
+		name          string
+		baseList      []string
+		date          string
+		expectedError error
+	}{
+		// Test case: Valid baseList with TimeFormat
+		{
+			name:          "Valid baseList with TimeFormat",
+			baseList:      []string{"09:00:00", "10:00:00", "11:00:00"},
+			date:          "2022-01-01",
+			expectedError: nil,
+		},
+		// Test case: Valid baseList with DatetimeFormat
+		{
+			name:          "Valid baseList with DatetimeFormat",
+			baseList:      []string{"2022-01-01 09:00:00", "2022-01-01 10:00:00", "2022-01-01 11:00:00"},
+			date:          "",
+			expectedError: nil,
+		},
+		// Test case: Invalid baseList with unsupported format
+		{
+			name:          "Invalid baseList with unsupported format",
+			baseList:      []string{"2023-09-01", "2023-10-01", "2023-11-01"},
+			date:          "2023-01-01",
+			expectedError: ErrUnSupportedBaseList,
+		},
+		// Test case: Invalid baseList with different time formats
+		{
+			name:          "Invalid baseList with different time formats",
+			baseList:      []string{"09:00:00", "2022-01-01 10:00:00", "11:00:00"},
+			date:          "2022-01-01",
+			expectedError: ErrBaseListDifferentTypes,
+		},
+		// Test case: Invalid baseList with incorrect order
+		{
+			name:          "Invalid baseList with incorrect order",
+			baseList:      []string{"11:00:00", "10:00:00", "09:00:00"},
+			date:          "2022-01-01",
+			expectedError: ErrIncorrectBaseListOrder,
+		},
+	}
+	// Run test cases
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Call function with test inputs
+			err := checkOptsBaseList(test.baseList, test.date)
+			// Check if returned error matches expected error
+			require.Equal(t, test.expectedError, err)
+		})
+	}
+}
+
+// Test_Check_checkOptsBeginEndTimeToTime is to check if the checkOptsBeginEndTimeToTime function returns the correct time.Time object for different inputs.
+func Test_Check_checkOptsBeginEndTimeToTime(t *testing.T) {
+	// Define test cases
+	tests := []struct {
+		name            string
+		beginEndTimeStr string
+		date            string
+		expectedType    uint
+		expectedTime    time.Time
+		expectedError   error
+	}{
+		// Test case for valid TimeFormat input
+		{
+			name:            "Valid TimeFormat",
+			beginEndTimeStr: "12:34:56",
+			date:            "2022-01-01",
+			expectedType:    TimeFormat,
+			expectedTime:    time.Date(2022, time.January, 1, 12, 34, 56, 0, time.UTC),
+			expectedError:   nil,
+		},
+		// Test case for valid DatetimeFormat input
+		{
+			name:            "Valid DatetimeFormat",
+			beginEndTimeStr: "2022-01-01 12:34:56",
+			date:            "",
+			expectedType:    DatetimeFormat,
+			expectedTime:    time.Date(2022, time.January, 1, 12, 34, 56, 0, time.UTC),
+			expectedError:   nil,
+		},
+		// Test case for unsupported format input
+		{
+			name:            "Unsupported format",
+			beginEndTimeStr: "01/01/2022",
+			date:            "",
+			expectedType:    0,
+			expectedTime:    time.Time{},
+			expectedError:   ErrUnSupportedBeginOrEndTimeFormat,
+		},
+	}
+
+	// Run test cases
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Call function with test inputs
+			beginEndTimeType, beginEndTime, err := checkOptsBeginEndTimeToTime(test.beginEndTimeStr, test.date)
+			// Check if returned type matches expected type
+			require.Equal(t, test.expectedType, beginEndTimeType)
+			// Check if returned time matches expected time
+			require.Equal(t, test.expectedTime, beginEndTime)
+			// Check if returned error matches expected error
+			require.Equal(t, test.expectedError, err)
+		})
+	}
+}
