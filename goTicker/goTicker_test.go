@@ -702,3 +702,186 @@ func Test_Check_SendSignals(t *testing.T) {
 		require.Equal(t, tickerBase.SignalWaitForTomorrow, signalFromTicker.SignalStatus)
 	})
 }
+
+/*
+Test_Check_SendSignals_SerialHandler checks the functionality of the SerialHandler in a GoTicker.
+The entire process will check the serialBase and timeStamp in the SerialHandler.
+*/
+func Test_Check_SendSignals_SerialHandler(t *testing.T) {
+	t.Run("check serialBase in SerialHandler", func(t *testing.T) {
+		// Get the current time
+		now := time.Now()
+
+		// Create a new GoTicker and set its properties
+		gt := &GoTicker{
+			BaseStamp: now.Unix(),
+			BaseList: []int64{
+				now.Add(1 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(3 * time.Second).Unix(),
+			},
+			BeginStamp: now.Add(0 * time.Second).Unix(),
+			EndStamp:   now.Add(30 * time.Second).Unix(),
+			Opts: tickerBase.Opts{
+				Duration: time.Nanosecond,
+			},
+			// Set the serial base to 10
+			SerialBase: 10,
+			// Set the serial handler function
+			SerialHandler: func(serialBase *uint64, timeStamp int64) (newSerial uint64) {
+				*serialBase++
+				newSerial = *serialBase
+				return
+			},
+		}
+
+		// Set the expected serial numbers
+		expectedSerials := []uint64{11, 12, 13}
+
+		// Create a channel to receive signals from the ticker
+		gt.SignalChan = make(chan tickerBase.TickerSignal)
+
+		// Create a channel to receive signals from the ticker
+		gt.SignalChan = make(chan tickerBase.TickerSignal)
+		// Reload the location information for the ticker
+		err := gt.ReloadLocation()
+		require.NoError(t, err)
+		// Update the ticker's current date
+		err = gt.UpdateNowDateOrMock("")
+		require.NoError(t, err)
+
+		// Start a new goroutine to send signals from the ticker
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			err = gt.SendSignals(ctx, 50)
+			require.NoError(t, err)
+		}()
+
+		// Wait for a signal from the ticker and verify its serial number
+		for i := 0; i < 3; i++ {
+			signalFromTicker := <-gt.SignalChan
+			require.Equal(t, expectedSerials[i], signalFromTicker.SerialNumber)
+		}
+
+		// Cancel the context to stop the goroutine sending signals from the ticker
+		cancel()
+	})
+	t.Run("check timeStamp in SerialHandler", func(t *testing.T) {
+		// Get the current time
+		now := time.Now()
+
+		// Create a new GoTicker and set its properties
+		gt := &GoTicker{
+			BaseStamp: now.Unix(),
+			BaseList: []int64{
+				now.Add(1 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(3 * time.Second).Unix(),
+			},
+			BeginStamp: now.Add(0 * time.Second).Unix(),
+			EndStamp:   now.Add(30 * time.Second).Unix(),
+			Opts: tickerBase.Opts{
+				Duration: time.Nanosecond,
+			},
+			// Set the serial base to 10
+			SerialBase: 10,
+			// Set the serial handler function
+			SerialHandler: func(serialBase *uint64, timeStamp int64) (newSerial uint64) {
+				newSerial = uint64(timeStamp)
+				return
+			},
+		}
+
+		// Set the expected serial numbers
+		expectedSerials := []uint64{
+			uint64(now.Add(1 * time.Second).Unix()),
+			uint64(now.Add(2 * time.Second).Unix()),
+			uint64(now.Add(3 * time.Second).Unix()),
+		}
+
+		// Create a channel to receive signals from the ticker
+		gt.SignalChan = make(chan tickerBase.TickerSignal)
+
+		// Create a channel to receive signals from the ticker
+		gt.SignalChan = make(chan tickerBase.TickerSignal)
+		// Reload the location information for the ticker
+		err := gt.ReloadLocation()
+		require.NoError(t, err)
+		// Update the ticker's current date
+		err = gt.UpdateNowDateOrMock("")
+		require.NoError(t, err)
+
+		// Start a new goroutine to send signals from the ticker
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			err = gt.SendSignals(ctx, 50)
+			require.NoError(t, err)
+		}()
+
+		// Wait for a signal from the ticker and verify its serial number
+		for i := 0; i < 3; i++ {
+			signalFromTicker := <-gt.SignalChan
+			require.Equal(t, expectedSerials[i], signalFromTicker.SerialNumber)
+		}
+
+		// Cancel the context to stop the goroutine sending signals from the ticker
+		cancel()
+	})
+	t.Run("check serialBase and timeStamp in SerialHandler", func(t *testing.T) {
+		// Get the current time
+		now := time.Now()
+
+		// Create a new GoTicker and set its properties
+		gt := &GoTicker{
+			BaseStamp: now.Unix(),
+			BaseList: []int64{
+				now.Add(1 * time.Second).Unix(),
+				now.Add(2 * time.Second).Unix(),
+				now.Add(3 * time.Second).Unix(),
+			},
+			BeginStamp: now.Add(0 * time.Second).Unix(),
+			EndStamp:   now.Add(30 * time.Second).Unix(),
+			Opts: tickerBase.Opts{
+				Duration: time.Nanosecond,
+			},
+			// Set the serial base to 20
+			SerialBase: 20,
+			// Set the serial handler function
+			SerialHandler: func(serialBase *uint64, timeStamp int64) (newSerial uint64) {
+				newSerial = *serialBase + uint64(timeStamp-now.Unix())
+				return
+			},
+		}
+
+		// Set the expected serial numbers
+		expectedSerials := []uint64{21, 22, 23}
+
+		// Create a channel to receive signals from the ticker
+		gt.SignalChan = make(chan tickerBase.TickerSignal)
+
+		// Create a channel to receive signals from the ticker
+		gt.SignalChan = make(chan tickerBase.TickerSignal)
+		// Reload the location information for the ticker
+		err := gt.ReloadLocation()
+		require.NoError(t, err)
+		// Update the ticker's current date
+		err = gt.UpdateNowDateOrMock("")
+		require.NoError(t, err)
+
+		// Start a new goroutine to send signals from the ticker
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			err = gt.SendSignals(ctx, 50)
+			require.NoError(t, err)
+		}()
+
+		// Wait for a signal from the ticker and verify its serial number
+		for i := 0; i < 3; i++ {
+			signalFromTicker := <-gt.SignalChan
+			require.Equal(t, expectedSerials[i], signalFromTicker.SerialNumber)
+		}
+
+		// Cancel the context to stop the goroutine sending signals from the ticker
+		cancel()
+	})
+}

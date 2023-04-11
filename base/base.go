@@ -68,7 +68,6 @@ func (e Error) Error() string {
 }
 
 type Base struct {
-	SerialHandler  func(int64) uint
 	NowDate        string
 	BaseLocation   *time.Location
 	BaseStamp      int64
@@ -84,6 +83,8 @@ type Base struct {
 	OffOpts        OffOpts
 	Status         uint
 	SignalChan     chan TickerSignal
+	SerialBase     uint64
+	SerialHandler  func(serialBase *uint64, timeStamp int64) (serialNumber uint64)
 }
 
 type Opts struct {
@@ -108,7 +109,7 @@ type OffOpts struct {
 
 type TickerSignal struct {
 	SignalStatus uint
-	SerialNumber uint
+	SerialNumber uint64
 	DelaySeconds int64
 }
 

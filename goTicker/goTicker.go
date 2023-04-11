@@ -498,9 +498,9 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 					receive.SignalChan <- tickerBase.TickerSignal{
 						SignalStatus: tickerBase.SignalOnTime,
 						// Generate and set a serial number if a serial handler function exists
-						SerialNumber: func() (serial uint) {
+						SerialNumber: func() (serial uint64) {
 							if receive.SerialHandler != nil {
-								serial = receive.SerialHandler(waitPoint)
+								serial = receive.SerialHandler(&receive.SerialBase, waitPoint)
 							}
 							return
 						}(),
@@ -512,9 +512,9 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 					receive.SignalChan <- tickerBase.TickerSignal{
 						SignalStatus: tickerBase.SignalDelay,
 						// Generate and set a serial number if a serial handler function exists
-						SerialNumber: func() (serial uint) {
+						SerialNumber: func() (serial uint64) {
 							if receive.SerialHandler != nil {
-								serial = receive.SerialHandler(waitPoint)
+								serial = receive.SerialHandler(&receive.SerialBase, waitPoint)
 							}
 							return
 						}(),
