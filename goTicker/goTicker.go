@@ -8,13 +8,13 @@ import (
 
 // Define status constants
 const (
-	StatusNewed                  uint = iota + 1 // 1: Newed status
-	StatusProducedWaitListBefore                 // 2: Produced wait list before status
-	StatusWaitForTomorrow                        // 3: Wait for tomorrow status
-	StatusRecover                                // 4: Recover Status
-	StatusMockTime                               // 5: Mock time status
-	StatusInactiv                                // 6: Inactive status
-	StatusDead                                   // 7: Dead status
+	StatusNewed                  uint32 = iota + 1 // 1: Newed status
+	StatusProducedWaitListBefore                   // 2: Produced wait list before status
+	StatusWaitForTomorrow                          // 3: Wait for tomorrow status
+	StatusRecover                                  // 4: Recover Status
+	StatusMockTime                                 // 5: Mock time status
+	StatusInactiv                                  // 6: Inactive status
+	StatusDead                                     // 7: Dead status
 )
 
 var mockDateStr string
@@ -157,7 +157,7 @@ func New(opts tickerBase.Opts, offOpts tickerBase.OffOpts) (output *GoTicker, er
 	}
 
 	// Set the SignalStatus value to StatusNewed
-	output.Status = StatusNewed
+	output.Status.Store(StatusNewed)
 
 	// Return the output and err values
 	return
@@ -167,7 +167,7 @@ func New(opts tickerBase.Opts, offOpts tickerBase.OffOpts) (output *GoTicker, er
 // and updates the status of the ticker.
 func (receive *GoTicker) ReNew() (err error) {
 	// Check if the ticker has been initialized with New() function
-	if receive.Status != StatusNewed {
+	if receive.Status.Load() != StatusNewed {
 		err = tickerBase.ErrNotNewedTicker
 		return
 	}
@@ -386,7 +386,7 @@ func (receive *GoTicker) CalculateWaitList(quantity int) (waitList []int64, err 
 	}
 
 	// Change status to ProducedWaitListBefore
-	receive.Status = StatusProducedWaitListBefore
+	receive.Status.Store(StatusProducedWaitListBefore)
 
 	// Return the waitList and err values
 	return
@@ -416,7 +416,7 @@ func (receive *GoTicker) calculateToNextDay() (waitSecond int64, err error) {
 // renewing the ticker for the next day, and setting the status to indicate recovery
 func (receive *GoTicker) waitForNextDay() (err error) {
 	// Set the status to indicate waiting for tomorrow
-	receive.Status = StatusWaitForTomorrow
+	receive.Status.Store(StatusWaitForTomorrow)
 
 	// Calculate the time to wait until tomorrow
 	var waitForTomorrow int64
@@ -427,7 +427,7 @@ func (receive *GoTicker) waitForNextDay() (err error) {
 
 	// Create a new timer with the calculated wait time plus 2 seconds
 	// The 2-second addition is to ensure that the timer really enters the next day !
-	timer := time.NewTimer(time.Duration(waitForTomorrow)*time.Second + 2*time.Second)
+	timer := time.NewTimer(time.Duration(waitForTomorrow)*time.Second + 2*time.Second) // <- race -
 	<-timer.C
 
 	/*
@@ -436,7 +436,7 @@ func (receive *GoTicker) waitForNextDay() (err error) {
 		so that the timer can be manually stopped if needed
 		However, it is not very harmful to forcibly stop the program here
 	*/
-	timer.Stop()
+	timer.Stop() // <- race -
 
 	// Renew the ticker for the next day
 	err = receive.ReNew()
@@ -445,7 +445,7 @@ func (receive *GoTicker) waitForNextDay() (err error) {
 	}
 
 	// Set the status to indicate recovery
-	receive.Status = StatusRecover
+	receive.Status.Store(StatusRecover)
 
 	// Return the err value
 	return
@@ -463,10 +463,10 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 			wait until the next day to produce the wait list
 		*/
 		if err == tickerBase.ErrInactiveBaseListAndRepeatList &&
-			receive.Status == StatusProducedWaitListBefore {
+			receive.Status.Load() == StatusProducedWaitListBefore {
 
 			// Send a signal to the ticker channel to wait until the next day to produce the wait list
-			receive.SignalChan <- tickerBase.TickerSignal{
+			receive.SignalChan <- tickerBase.TickerSignal{ // <- race -
 				SignalStatus: tickerBase.SignalWaitForTomorrow,
 			}
 
@@ -479,10 +479,10 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 
 		// Loop through the wait list and wait until each time point is reached
 		for _, waitPoint := range waitLists {
-			select {
+			select { // <- race -
 			// If the context is done, send a user interrupt signal and return
 			case <-ctx.Done():
-				receive.SignalChan <- tickerBase.TickerSignal{
+				receive.SignalChan <- tickerBase.TickerSignal{ // <- race -
 					SignalStatus: tickerBase.SignalUserInterrupt,
 				}
 				return
@@ -492,10 +492,10 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 				waitForSeconds := waitPoint - now
 				// If the wait time is positive, wait until the time point is reached
 				if waitForSeconds > 0 {
-					timer := time.NewTimer(time.Duration(waitForSeconds) * time.Second)
+					timer := time.NewTimer(time.Duration(waitForSeconds) * time.Second) // <- race -
 					<-timer.C
 					// Send an on-time signal when the time point is reached.
-					receive.SignalChan <- tickerBase.TickerSignal{
+					receive.SignalChan <- tickerBase.TickerSignal{ // <- race -
 						SignalStatus: tickerBase.SignalOnTime,
 						// Generate and set a serial number if a serial handler function exists
 						SerialNumber: func() (serial uint64) {
@@ -506,10 +506,10 @@ func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error)
 						}(),
 					}
 					// Stop the timer
-					timer.Stop()
+					timer.Stop() // <- race -
 				} else {
 					// Send an on-time signal with the delay time if the time point is already passed
-					receive.SignalChan <- tickerBase.TickerSignal{
+					receive.SignalChan <- tickerBase.TickerSignal{ // <- race -
 						SignalStatus: tickerBase.SignalDelay,
 						// Generate and set a serial number if a serial handler function exists
 						SerialNumber: func() (serial uint64) {

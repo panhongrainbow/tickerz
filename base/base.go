@@ -3,6 +3,7 @@ package base
 import (
 	"errors"
 	"log"
+	"sync/atomic"
 	"time"
 )
 
@@ -81,10 +82,11 @@ type Base struct {
 	Mode           uint
 	Opts           Opts
 	OffOpts        OffOpts
-	Status         uint
-	SignalChan     chan TickerSignal
-	SerialBase     uint64
-	SerialHandler  func(serialBase *uint64, timeStamp int64) (serialNumber uint64)
+	// Status         uint
+	Status        atomic.Uint32
+	SignalChan    chan TickerSignal
+	SerialBase    uint64
+	SerialHandler func(serialBase *uint64, timeStamp int64) (serialNumber uint64)
 }
 
 type Opts struct {
