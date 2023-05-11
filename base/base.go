@@ -84,7 +84,7 @@ type Base struct {
 	Mode           uint
 	Opts           Opts
 	OffOpts        OffOpts
-	Active         bool
+	Active32       uint32
 	Status         atomic.Uint32
 	SignalChan     chan TickerSignal
 	SerialBase     uint64

@@ -84,7 +84,7 @@ func Test_Race_SendSignals(t *testing.T) {
 	// Create 1000 goroutines to call SendSignals in order to check for data race
 	for i := 0; i < 1000; i++ {
 		go func() {
-			err = gt.SendSignals(context.Background(), 10)
+			err := gt.SendSignals(context.Background(), 10)
 			if err != nil && err != tickerBase.ErrAlreadyActive {
 				panic(err)
 			}
