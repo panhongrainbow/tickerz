@@ -453,6 +453,18 @@ func (receive *GoTicker) waitForNextDay() (err error) {
 
 // SendSignals sends signals at specific intervals and handles interruptions.
 func (receive *GoTicker) SendSignals(ctx context.Context, count int) (err error) {
+	// It is strange that atomic CAS cannot handle race here.
+
+	// Lock the ticker to prevent multiple calls to SendSignals
+	receive.Mu.Lock()
+	if receive.Active {
+		err = tickerBase.ErrAlreadyActive
+		return
+	}
+	receive.Active = true
+	receive.Mu.Unlock()
+
+	// the tickerz is active and loop until the context is done
 	for {
 		// Calculate the list of wait times
 		var waitLists []int64

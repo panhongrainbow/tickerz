@@ -3,6 +3,7 @@ package base
 import (
 	"errors"
 	"log"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -47,6 +48,7 @@ const (
 	ErrInactiveRepeatList            = Error("inactive repeat list")
 	ErrInactiveBaseListAndRepeatList = Error("inactive base list and repeat list")
 	ErrUserInterrupted               = Error("user interrupt")
+	ErrAlreadyActive                 = Error("already active")
 )
 
 const (
@@ -82,11 +84,12 @@ type Base struct {
 	Mode           uint
 	Opts           Opts
 	OffOpts        OffOpts
-	// Status         uint
-	Status        atomic.Uint32
-	SignalChan    chan TickerSignal
-	SerialBase    uint64
-	SerialHandler func(serialBase *uint64, timeStamp int64) (serialNumber uint64)
+	Active         bool
+	Status         atomic.Uint32
+	SignalChan     chan TickerSignal
+	SerialBase     uint64
+	SerialHandler  func(serialBase *uint64, timeStamp int64) (serialNumber uint64)
+	Mu             sync.Mutex
 }
 
 type Opts struct {
